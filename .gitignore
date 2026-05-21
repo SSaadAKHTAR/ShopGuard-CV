@@ -39,3 +39,8 @@ coverage.xml
 # Models / artifacts (optional: keep if you don't want to commit these)
 models/
 
+# Gesture detector dataset folders (large video/keypoint dumps)
+gesture-detector/data/raw_videos/Train/
+gesture-detector/data/raw_videos/Test/
+gesture-detector/data/keypoints/
+
