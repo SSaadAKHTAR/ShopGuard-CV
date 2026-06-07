@@ -4,10 +4,8 @@ import numpy as np
 import os
 from collections import defaultdict
 
-# ── MediaPipe setup ──────────────────────────────────────────
 mp_pose = mp.solutions.pose
 
-# ── Paths ────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
@@ -19,25 +17,15 @@ SPLITS = {
 OUTPUT_DIR = os.path.join(DATA_DIR, "keypoints")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ── Helper: extract clip name from filename ──────────────────
 def get_clip_name(filename):
-    # "Shoplifting001_x264_1000.png" → "Shoplifting001_x264"
     parts = filename.rsplit("_", 1)
     return parts[0]
 
-# ── Helper: extract frame number for sorting ─────────────────
 def get_frame_number(filename):
-    # "Shoplifting001_x264_1000.png" → 1000
-    name = os.path.splitext(filename)[0]   # remove .png
+    name = os.path.splitext(filename)[0]   
     return int(name.rsplit("_", 1)[-1])
 
-# ── Main extraction function ─────────────────────────────────
 def extract_keypoints_from_clip(image_paths):
-    """
-    Given a sorted list of image paths (one clip),
-    return a numpy array of shape (num_frames, 99)
-    99 = 33 landmarks × 3 values (x, y, visibility)
-    """
     keypoints_sequence = []
 
     with mp_pose.Pose(
@@ -65,13 +53,12 @@ def extract_keypoints_from_clip(image_paths):
 
             keypoints_sequence.append(kp)
 
-    return np.array(keypoints_sequence)  # shape: (num_frames, 99)
+    return np.array(keypoints_sequence)  
 
 
-# ── Process each split ───────────────────────────────────────
 for split_name, folder_path in SPLITS.items():
 
-    print(f"\n📂 Processing {split_name}...")
+    print(f"\n Processing {split_name}")
 
     # Group PNG files by clip name
     clips = defaultdict(list)
@@ -88,18 +75,17 @@ for split_name, folder_path in SPLITS.items():
         filenames_sorted = sorted(filenames, key=get_frame_number)
         full_paths = [os.path.join(folder_path, f) for f in filenames_sorted]
 
-        print(f"   🎬 {clip_name} → {len(full_paths)} frames", end="")
+        print(f"    {clip_name} → {len(full_paths)} frames", end="")
 
         # Extract keypoints
         keypoints = extract_keypoints_from_clip(full_paths)
 
-        # Save as .npy file
-        # e.g. keypoints/Train_Shoplifting001_x264.npy
+
         save_name = f"{split_name}_{clip_name}.npy"
         save_path = os.path.join(OUTPUT_DIR, save_name)
         np.save(save_path, keypoints)
 
         print(f" → saved {keypoints.shape}")
 
-print("\n✅ Keypoint extraction complete!")
+print("\n Keypoint extraction complete!")
 print(f"   Saved to: {OUTPUT_DIR}")

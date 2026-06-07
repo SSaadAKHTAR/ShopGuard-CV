@@ -4,33 +4,27 @@ import numpy as np
 import os
 from collections import defaultdict
 
-# ── MediaPipe setup ──────────────────────────────────────────
 mp_pose = mp.solutions.pose
 
-# ── Paths ────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 SPLITS = {
-    "Train": os.path.join(DATA_DIR, "raw_videos", "Train", "NormalVideos"),
-    "Test":  os.path.join(DATA_DIR, "raw_videos", "Test",  "NormalVideos"),
+    "Train": (os.path.join(DATA_DIR, "raw_videos", "Train", "NormalVideos"), 34),
+    "Test":  (os.path.join(DATA_DIR, "raw_videos", "Test",  "NormalVideos"), 16),
 }
 
 OUTPUT_DIR = os.path.join(DATA_DIR, "keypoints")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ── Helper: extract clip name from filename ──────────────────
 def get_clip_name(filename):
-    # "Normal_Videos001_x264_1000.png" → "Normal_Videos001_x264"
     parts = filename.rsplit("_", 1)
     return parts[0]
 
-# ── Helper: extract frame number for sorting ─────────────────
 def get_frame_number(filename):
     name = os.path.splitext(filename)[0]
     return int(name.rsplit("_", 1)[-1])
 
-# ── Main extraction function ─────────────────────────────────
 def extract_keypoints_from_clip(image_paths):
     keypoints_sequence = []
 
@@ -62,10 +56,9 @@ def extract_keypoints_from_clip(image_paths):
     return np.array(keypoints_sequence)
 
 
-# ── Process each split ───────────────────────────────────────
-for split_name, folder_path in SPLITS.items():
+for split_name, (folder_path, max_clips) in SPLITS.items():
 
-    print(f"\n📂 Processing {split_name} Normal...")
+    print(f"\n Processing {split_name} Normal (using {max_clips} clips)")
 
     clips = defaultdict(list)
     for fname in os.listdir(folder_path):
@@ -73,23 +66,25 @@ for split_name, folder_path in SPLITS.items():
             clip = get_clip_name(fname)
             clips[clip].append(fname)
 
-    print(f"   Found {len(clips)} clips")
+    print(f"   Found {len(clips)} total clips, selecting {max_clips}")
 
-    for clip_name, filenames in clips.items():
+    #  use selected_clips in the loop
+    selected_clips = list(clips.items())[:max_clips]
+
+    for clip_name, filenames in selected_clips:
 
         filenames_sorted = sorted(filenames, key=get_frame_number)
         full_paths = [os.path.join(folder_path, f) for f in filenames_sorted]
 
-        print(f"   🎬 {clip_name} → {len(full_paths)} frames", end="")
+        print(f"    {clip_name} → {len(full_paths)} frames", end="")
 
         keypoints = extract_keypoints_from_clip(full_paths)
 
-        # Note: "Normal" prefix so we can tell apart from Shoplifting later
         save_name = f"{split_name}_Normal_{clip_name}.npy"
         save_path = os.path.join(OUTPUT_DIR, save_name)
         np.save(save_path, keypoints)
 
         print(f" → saved {keypoints.shape}")
 
-print("\n✅ Normal keypoint extraction complete!")
+print("\n Normal keypoint extraction complete!")
 print(f"   Saved to: {OUTPUT_DIR}")
