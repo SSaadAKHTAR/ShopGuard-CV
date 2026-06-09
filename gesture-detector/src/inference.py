@@ -114,11 +114,12 @@ with mp_pose.Pose(
             confidence = conf_shoplifting
 
             if pred == 1:
-                current_label = "SHOPLIFTING DETECTED"
-                current_color = COLOR_SHOPLIFTING
-            else:
                 current_label = "Normal"
                 current_color = COLOR_NORMAL
+                
+            else:
+                current_label = "SHOPLIFTING DETECTED"
+                current_color = COLOR_SHOPLIFTING
 
             frame_buffer.pop(0)
 
