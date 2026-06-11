@@ -48,6 +48,10 @@ WINDOW_SIZE = 30
 THRESHOLD   = 0.5
 frame_buffer = []
 
+def is_empty_frame(kp):
+    """Returns True if no person was detected in this frame."""
+    return np.all(kp == 0)
+
 # ── Colors ────────────────────────────────────────────────────
 COLOR_NORMAL     = (0, 200, 0)    # green
 COLOR_SHOPLIFTING = (0, 0, 255)   # red
@@ -102,26 +106,37 @@ with mp_pose.Pose(
         frame_buffer.append(kp)
 
         if len(frame_buffer) >= WINDOW_SIZE:
-            window = np.array(frame_buffer[-WINDOW_SIZE:])  # last 30 frames
-            tensor = torch.tensor(window, dtype=torch.float32).unsqueeze(0)
+            window = np.array(frame_buffer[-WINDOW_SIZE:])
 
-            with torch.no_grad():
-                output = model(tensor)
-                probs  = torch.softmax(output, dim=1)
+            # Check how many frames have no person detected
+            empty_frames = sum(1 for f in window if is_empty_frame(f))
+            empty_ratio  = empty_frames / WINDOW_SIZE
+
+            if empty_ratio > 0.5:
+                # More than half the window has no person — don't predict
+                current_label = "No Person Detected"
+                current_color = (100, 100, 100)  # grey
+                confidence    = 0.0
+            else:
+                tensor = torch.tensor(window, dtype=torch.float32).unsqueeze(0)
+
+                with torch.no_grad():
+                    output = model(tensor)
+                    probs  = torch.softmax(output, dim=1)
                 conf_shoplifting = probs[0, 1].item()
                 pred   = 1 if conf_shoplifting >= THRESHOLD else 0
 
-            confidence = conf_shoplifting
+                confidence = conf_shoplifting
 
-            if pred == 1:
-                current_label = "Normal"
-                current_color = COLOR_NORMAL
-                
-            else:
-                current_label = "SHOPLIFTING DETECTED"
-                current_color = COLOR_SHOPLIFTING
+                if pred == 1:
+                    current_label = "Normal"
+                    current_color = COLOR_NORMAL
+                else:
+                    current_label = "🚨 SHOPLIFTING DETECTED"
+                    current_color = COLOR_SHOPLIFTING
 
             frame_buffer.pop(0)
+
 
 
         # Background bar at top
